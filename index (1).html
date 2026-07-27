@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Interactive MaxVolt ReEarth process tracker for client and internal workflow visibility.">
+<meta name="theme-color" content="#10161A">
+<title>MaxVolt ReEarth — Process Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #10161A;
+    --panel: #1A2226;
+    --panel-alt: #202B2E;
+    --panel-raised: #263133;
+    --line: #2B3538;
+    --line-soft: #212A2D;
+    --text: #EAF2EF;
+    --text-muted: #8FA6A0;
+    --text-dim: #5E7570;
+    --teal: #4FD1AE;
+    --teal-dim: #2A6656;
+    --copper: #D08A56;
+    --amber: #E8B94E;
+    --red: #E36868;
+    --font-display: 'Space Grotesk', 'IBM Plex Sans', sans-serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    padding: 32px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap{ max-width: 980px; margin: 0 auto; }
+
+  /* ---------- Header ---------- */
+  .header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    flex-wrap: wrap; gap: 18px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .eyebrow{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin: 0 0 6px;
+  }
+  .title{
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+    color: var(--text);
+  }
+  .title span{ color: var(--text-muted); font-weight: 500; }
+
+  /* ---------- View toggle ---------- */
+  .toggle{
+    display:inline-flex;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 4px;
+  }
+  .toggle button{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    padding: 9px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+  }
+  .toggle button.active{
+    background: var(--teal);
+    color: #0A1512;
+    font-weight: 600;
+  }
+  .toggle button:focus-visible{ outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  /* ---------- Cell tracker (battery-cell step indicator) ---------- */
+  .tracker{
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 30px;
+  }
+  .cell{
+    position: relative;
+    cursor: pointer;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 12px 12px;
+    text-align: left;
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .cell:hover{ border-color: var(--teal-dim); }
+  .cell:focus-visible{ outline: 2px solid var(--teal); outline-offset: 2px; }
+  .cell .num{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: .05em;
+  }
+  .cell .label{
+    font-family: var(--font-display);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.25;
+  }
+  .charge{
+    margin-top: 10px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--line-soft);
+    overflow: hidden;
+  }
+  .charge i{
+    display:block; height: 100%; width: 0%;
+    background: var(--text-dim);
+    border-radius: 3px;
+    transition: width .25s ease, background .25s ease;
+  }
+  .cell.done .charge i{ width: 100%; background: var(--teal); }
+  .cell.done .label{ color: var(--text); }
+  .cell.active{ border-color: var(--teal); background: var(--panel-alt); }
+  .cell.active .label{ color: var(--text); }
+  .cell.active .charge i{ background: var(--amber); width: 60%; }
+  .cell.done.active .charge i{ background: var(--teal); width: 100%; }
+
+  /* ---------- Content panel ---------- */
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 26px 26px 24px;
+    min-height: 360px;
+  }
+  .panel-head{
+    display:flex; align-items:center; justify-content: space-between;
+    margin-bottom: 18px;
+    flex-wrap: wrap; gap: 10px;
+  }
+  .panel-head h2{
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .tag{
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--text-muted);
+  }
+  .tag.client{ color: var(--teal); border-color: var(--teal-dim); }
+  .tag.internal{ color: var(--copper); border-color: #6B4A31; }
+
+  /* Client: milestone checklist card */
+  .milestones{ list-style:none; margin:0 0 18px; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .milestones li{
+    display:flex; align-items:center; gap:10px;
+    font-size: 14px; color: var(--text-muted);
+    padding: 10px 12px;
+    background: var(--panel-alt);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+  }
+  .milestones li.check{ color: var(--text); }
+  .milestones li.pending{ color: var(--text-dim); border-style: dashed; }
+  .dot{ width: 9px; height:9px; border-radius:50%; flex-shrink:0; background: var(--line); }
+  .milestones li.check .dot{ background: var(--teal); }
+  .milestones li.pending .dot{ background: var(--text-dim); }
+
+  .status-line{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 4px 0 20px;
+  }
+  .status-line b{ color: var(--amber); font-weight: 600; }
+
+  .actions{ display:flex; gap:10px; flex-wrap: wrap; }
+  .btn{
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--panel-raised);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .btn.primary{ background: var(--teal); color:#0A1512; border-color: var(--teal); font-weight:600; }
+  .btn.ghost{ background: transparent; color: var(--text-muted); }
+  .btn:focus-visible{ outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  .note{
+    margin-top: 18px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    border-top: 1px dashed var(--line);
+    padding-top: 14px;
+    line-height: 1.5;
+  }
+
+  /* Internal: data table */
+  table{ width:100%; border-collapse: collapse; font-size: 13px; }
+  thead th{
+    text-align:left;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  tbody td{
+    padding: 10px 10px;
+    border-bottom: 1px solid var(--line-soft);
+    color: var(--text-muted);
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  td.strong{ color: var(--text); font-weight:500; }
+  .pill{
+    display:inline-block;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+  }
+  .pill.ok{ color: var(--teal); border-color: var(--teal-dim); }
+  .pill.warn{ color: var(--amber); border-color: #6B5A2A; }
+  .pill.bad{ color: var(--red); border-color: #6B3131; }
+  .pill.mid{ color: var(--text-muted); }
+
+  /* KPI grid for internal ops view */
+  .kpis{ display:grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:20px; }
+  .kpi{
+    background: var(--panel-alt); border:1px solid var(--line-soft); border-radius:10px;
+    padding: 14px 14px 12px;
+  }
+  .kpi .v{ font-family: var(--font-mono); font-size: 20px; font-weight:600; color: var(--text); }
+  .kpi .l{ font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+  .costblock{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 10px 24px;
+    margin-bottom: 18px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+  .costblock .row{ display:flex; justify-content:space-between; border-bottom:1px dashed var(--line-soft); padding-bottom:6px; color: var(--text-muted); }
+  .costblock .row b{ color: var(--text); font-weight:600; }
+  .costblock .row.total b{ color: var(--copper); }
+
+  .recommend{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family: var(--font-mono); font-size:12px;
+    padding: 8px 14px; border-radius: 8px;
+    background: var(--panel-alt); border:1px solid var(--teal-dim); color: var(--teal);
+    margin-bottom: 6px;
+  }
+
+  footer{
+    text-align:center; margin-top: 30px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+  }
+
+  /* ---------- Onboarding form (Step 1 / Client) ---------- */
+  .section-block{ margin-bottom: 26px; }
+  .section-block:last-child{ margin-bottom: 0; }
+  .section-head{
+    display:flex; align-items:baseline; gap:10px;
+    margin-bottom: 12px;
+  }
+  .section-head .si{
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim);
+    border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px;
+  }
+  .section-head h3{
+    font-family: var(--font-display); font-size: 14.5px; font-weight:600; margin:0; color: var(--text);
+  }
+  .section-sub{ font-size: 12px; color: var(--text-dim); margin: -6px 0 14px; }
+
+  .cat-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .cat-card{
+    background: var(--panel-alt); border: 1px solid var(--line-soft); border-radius: 10px;
+    padding: 14px 14px 12px; cursor: pointer; transition: border-color .15s ease, background .15s ease;
+  }
+  .cat-card:hover{ border-color: var(--teal-dim); }
+  .cat-card.picked{ border-color: var(--teal); background: var(--panel-raised); }
+  .cat-card .cat-tag{
+    font-family: var(--font-mono); font-size: 10px; letter-spacing:.05em; color: var(--teal);
+    display:block; margin-bottom: 6px;
+  }
+  .cat-card.picked .cat-tag{ color: var(--teal); }
+  .cat-card h4{ font-family: var(--font-display); font-size: 13.5px; margin: 0 0 8px; color: var(--text); }
+  .cat-card ul{ margin:0; padding-left: 16px; font-size: 11.5px; color: var(--text-muted); line-height: 1.7; }
+
+  .form-grid{ display:grid; grid-template-columns: repeat(2,1fr); gap: 12px 16px; }
+  .field{ display:flex; flex-direction:column; gap: 6px; }
+  .field.full{ grid-column: 1 / -1; }
+  .field label{ font-family: var(--font-mono); font-size: 10.5px; letter-spacing:.04em; text-transform:uppercase; color: var(--text-dim); }
+  .field input, .field select, .field textarea{
+    background: var(--panel-alt); border: 1px solid var(--line); border-radius: 7px;
+    padding: 9px 11px; font-family: var(--font-body); font-size: 13px; color: var(--text);
+  }
+  .field input::placeholder, .field textarea::placeholder{ color: var(--text-dim); }
+  .field input:focus, .field select:focus, .field textarea:focus{ outline: 2px solid var(--teal); outline-offset: 1px; }
+
+  .upload-grid{ display:grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 10px; }
+  .upload-box{
+    border: 1px dashed var(--line); border-radius: 9px; padding: 14px 12px;
+    background: var(--panel-alt); text-align:center; cursor:pointer;
+  }
+  .upload-box:hover{ border-color: var(--teal-dim); }
+  .upload-box .icon{ font-size: 16px; color: var(--text-dim); margin-bottom:6px; }
+  .upload-box .name{ font-size: 12px; color: var(--text); font-weight: 500; }
+  .upload-box .hint{ font-size: 10.5px; color: var(--text-dim); margin-top: 3px; }
+
+  .chip-group{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{
+    font-family: var(--font-mono); font-size: 11.5px;
+    padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--panel-alt); color: var(--text-muted); cursor:pointer;
+  }
+  .chip.picked{ border-color: var(--teal); color: var(--teal); background: var(--panel-raised); }
+  .chip.express.picked{ border-color: var(--amber); color: var(--amber); }
+
+  .img-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top: 4px; }
+  .img-slot{
+    width: 56px; height: 56px; border-radius: 8px; border: 1px dashed var(--line);
+    background: var(--panel-alt); display:flex; align-items:center; justify-content:center;
+    font-size: 16px; color: var(--text-dim);
+  }
+
+  /* ---------- Notification feed ---------- */
+  .notif-feed{ list-style:none; margin:0 0 18px; padding:0; display:flex; flex-direction:column; }
+  .notif{
+    display:flex; gap:12px; padding: 12px 4px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .notif:last-child{ border-bottom:none; }
+  .notif .nicon{
+    width: 30px; height:30px; flex-shrink:0; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--panel-alt); border:1px solid var(--line-soft); font-size:14px;
+  }
+  .notif .ntext{ font-size: 13.5px; color: var(--text-muted); line-height:1.4; }
+  .notif.current .ntext{ color: var(--text); font-weight: 500; }
+  .notif .ntime{ font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); margin-top:3px; }
+  .notif.pending{ opacity: .4; }
+
+  .kv-grid{ margin-bottom: 6px; }
+  .kv{ display:flex; justify-content:space-between; gap:10px; padding:8px 2px; border-bottom:1px dashed var(--line-soft); font-size:13px; color:var(--text-muted); }
+  .kv:last-child{ border-bottom:none; }
+  .kv b{ color: var(--text); font-weight:500; text-align:right; }
+
+  .approval-row{
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;
+    padding:10px 12px; background:var(--panel-alt); border:1px solid var(--line-soft); border-radius:8px; margin-bottom:8px;
+    font-size:13px; color: var(--text);
+  }
+  .approval-row .actions{ display:flex; gap:8px; }
+  .btn.sm{ padding: 6px 12px; font-size:12px; }
+
+  .doc-chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .doc-chip{
+    font-family: var(--font-mono); font-size:11.5px; padding:7px 12px; border-radius:8px;
+    border:1px solid var(--line-soft); background: var(--panel-alt); color: var(--text-muted);
+  }
+
+  .flow-mini{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-family: var(--font-mono); font-size:11.5px; }
+  .flow-mini .node{ padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:var(--panel-alt); color: var(--text-muted); }
+  .flow-mini .node.done{ color: var(--teal); border-color: var(--teal-dim); }
+  .flow-mini .arrow{ color: var(--text-dim); }
+
+  .track-list{ list-style:none; margin:0 0 18px; padding:0; display:flex; flex-direction:column; gap:2px; }
+  .track-list li{
+    display:flex; align-items:center; gap:10px; padding:9px 4px;
+    font-size:13.5px; color: var(--text-dim); border-left: 2px solid var(--line-soft); padding-left:14px;
+  }
+  .track-list li .box{ font-size:14px; flex-shrink:0; }
+  .track-list li.done{ color: var(--text-muted); border-left-color: var(--teal-dim); }
+  .track-list li.current{ color: var(--text); font-weight:500; border-left-color: var(--amber); }
+
+  .doc-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .doc-list li{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 12px; background:var(--panel-alt); border:1px solid var(--line-soft); border-radius:8px;
+    font-size:13px; color: var(--text);
+  }
+  .doc-list li.locked{ color: var(--text-dim); }
+  .doc-list .dlink{ font-family: var(--font-mono); font-size:11px; color: var(--teal); }
+  .doc-list li.locked .dlink{ color: var(--text-dim); }
+
+  @media (max-width:640px){
+    .tracker{ grid-template-columns: repeat(3,1fr); }
+    .header{ flex-direction:column; align-items:flex-start; }
+    .cat-grid{ grid-template-columns: 1fr; }
+    .form-grid{ grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div>
+      <p class="eyebrow">MaxVolt ReEarth · Digital Operating Platform</p>
+      <h1 class="title">Process Tracker <span>— what each side sees</span></h1>
+    </div>
+    <div class="toggle" role="tablist" aria-label="Switch dashboard view">
+      <button id="btn-client" class="active" onclick="setView('client')">Client View</button>
+      <button id="btn-internal" onclick="setView('internal')">ReEarth Internal</button>
+    </div>
+  </div>
+
+  <div class="tracker" id="tracker"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2 id="panel-title">Step 1 — Business Partner Onboarding</h2>
+      <span class="tag client" id="panel-tag">Client View</span>
+    </div>
+    <div id="panel-body"></div>
+  </div>
+
+  <footer>Click a cell above to move through the process · toggle switches whose screen you're looking at</footer>
+</div>
+
+<script>
+const steps = [
+  { label: "Onboarding" },
+  { label: "Verification" },
+  { label: "Procurement" },
+  { label: "Operations" },
+  { label: "Plant Ops" },
+];
+
+let currentStep = 0;
+let currentView = 'client';
+
+const trackerEl = document.getElementById('tracker');
+steps.forEach((s, i) => {
+  const cell = document.createElement('button');
+  cell.className = 'cell';
+  cell.setAttribute('aria-label', 'Step ' + (i+1) + ' ' + s.label);
+  cell.innerHTML = `
+    <div class="num">STEP ${String(i+1).padStart(2,'0')}</div>
+    <div class="label">${s.label}</div>
+    <div class="charge"><i></i></div>
+  `;
+  cell.onclick = () => { currentStep = i; render(); };
+  trackerEl.appendChild(cell);
+});
+
+function setView(v){
+  currentView = v;
+  document.getElementById('btn-client').classList.toggle('active', v==='client');
+  document.getElementById('btn-internal').classList.toggle('active', v==='internal');
+  document.getElementById('panel-tag').textContent = v === 'client' ? 'Client View' : 'ReEarth Internal';
+  document.getElementById('panel-tag').className = 'tag ' + (v === 'client' ? 'client' : 'internal');
+  render();
+}
+
+function renderTracker(){
+  const cells = trackerEl.querySelectorAll('.cell');
+  cells.forEach((c,i) => {
+    c.classList.toggle('done', i < currentStep);
+    c.classList.toggle('active', i === currentStep);
+  });
+}
+
+const titles = [
+  "Step 1 — Business Partner Onboarding",
+  "Step 2 — Verification (Document + Inspection)",
+  "Step 3 — Procurement Review",
+  "Step 4 — Operations & Logistics",
+  "Step 5 — Plant Operations",
+];
+
+function renderPanel(){
+  document.getElementById('panel-title').textContent = titles[currentStep];
+  const body = document.getElementById('panel-body');
+  body.innerHTML = views[currentView][currentStep]();
+}
+
+function render(){
+  renderTracker();
+  renderPanel();
+}
+
+// ---------------- CLIENT VIEW CONTENT ----------------
+const client = [
+  // Step 1
+  () => `
+    <div class="section-block">
+      <div class="section-head"><span class="si">01</span><h3>Select Your Category</h3></div>
+      <p class="section-sub">Choose the category that matches your business — this decides which onboarding fields you'll fill next.</p>
+      <div class="cat-grid">
+        <div class="cat-card picked">
+          <span class="cat-tag">CAT-1 · PRODUCER</span>
+          <h4>Manufacturer / OEM / Importer</h4>
+          <ul>
+            <li>Battery Manufacturer</li>
+            <li>OEM</li>
+            <li>Importer</li>
+            <li>Battery Assembler</li>
+          </ul>
+        </div>
+        <div class="cat-card">
+          <span class="cat-tag">CAT-2 · COLLECTION PARTNER</span>
+          <h4>Aggregators &amp; Dealers</h4>
+          <ul>
+            <li>Aggregator</li>
+            <li>Collection Center</li>
+            <li>Scrap Dealer</li>
+            <li>Bulk Consumer</li>
+            <li>Dealer / Distributor</li>
+          </ul>
+        </div>
+        <div class="cat-card">
+          <span class="cat-tag">CAT-3 · WASTE GENERATOR</span>
+          <h4>Corporates &amp; Institutions</h4>
+          <ul>
+            <li>EV Fleet / Telecom</li>
+            <li>Data Centre</li>
+            <li>Solar &amp; BESS Operator</li>
+            <li>Govt / PSU, Hospitals</li>
+            <li>Educational Institution</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">02</span><h3>Company Profile</h3></div>
+      <div class="form-grid">
+        <div class="field"><label>CIN</label><input placeholder="U31909DL2020PTC123456"></div>
+        <div class="field"><label>GST Number</label><input placeholder="07ABCDE1234F1Z5"></div>
+        <div class="field"><label>PAN</label><input placeholder="ABCDE1234F"></div>
+        <div class="field"><label>Contact Person</label><input placeholder="Full name"></div>
+        <div class="field"><label>Email</label><input placeholder="name@company.com"></div>
+        <div class="field"><label>Contact Number</label><input placeholder="+91 XXXXX XXXXX"></div>
+        <div class="field full"><label>Registered Address</label><input placeholder="Building, street, city, state, PIN"></div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">03</span><h3>Compliance Documents</h3></div>
+      <p class="section-sub">Upload as applicable to your category.</p>
+      <div class="upload-grid">
+        <div class="upload-box"><div class="icon">⬆</div><div class="name">CPCB Registration</div><div class="hint">PDF, up to 10MB</div></div>
+        <div class="upload-box"><div class="icon">⬆</div><div class="name">Factory Licence</div><div class="hint">PDF, up to 10MB</div></div>
+        <div class="upload-box"><div class="icon">⬆</div><div class="name">CTE</div><div class="hint">Consent to Establish</div></div>
+        <div class="upload-box"><div class="icon">⬆</div><div class="name">CTO</div><div class="hint">Consent to Operate</div></div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">04</span><h3>Material Listing</h3></div>
+      <p class="section-sub">Tell us what material you currently have available.</p>
+      <div class="form-grid">
+        <div class="field"><label>Material Name</label><input placeholder="Lithium-ion Battery"></div>
+        <div class="field"><label>Battery Chemistry</label><input placeholder="LFP / NMC / Lead-acid"></div>
+        <div class="field"><label>Category</label><input placeholder="EV / Industrial / Consumer"></div>
+        <div class="field"><label>Quantity</label><input placeholder="1500 kg"></div>
+        <div class="field"><label>Battery Type</label><input placeholder="Module / Cell / Pack"></div>
+        <div class="field"><label>Condition</label><input placeholder="Used / Scrap / Damaged"></div>
+        <div class="field"><label>Location</label><input placeholder="Noida, Ghaziabad, Delhi, Rajasthan, Haryana"></div>
+        <div class="field"><label>Pickup Date</label><input placeholder="DD / MM / YYYY"></div>
+        <div class="field full"><label>Pickup Address</label><input placeholder="Full pickup address"></div>
+        <div class="field full">
+          <label>Priority</label>
+          <div class="chip-group">
+            <span class="chip picked">Normal</span>
+            <span class="chip express">Express</span>
+          </div>
+        </div>
+        <div class="field full">
+          <label>Images</label>
+          <div class="img-row">
+            <div class="img-slot">＋</div><div class="img-slot">＋</div><div class="img-slot">＋</div>
+          </div>
+        </div>
+        <div class="field full"><label>Remarks (optional)</label><textarea rows="2" placeholder="Any additional notes for the buyer"></textarea></div>
+      </div>
+    </div>
+
+    <div class="actions"><button class="btn primary">Submit Application</button></div>
+    <div class="note">Once submitted, your application and material listing move to the Verification team for document + inspection review.</div>
+  `,
+  // Step 2
+  () => `
+    <div class="section-block">
+      <div class="section-head"><span class="si">🔔</span><h3>Notifications</h3></div>
+      <p class="section-sub">You get an update at every stage — no need to check back manually.</p>
+      <ul class="notif-feed">
+        <li class="notif">
+          <div class="nicon">✅</div>
+          <div><div class="ntext">Your application has been submitted.</div><div class="ntime">24 Jul, 11:02 AM</div></div>
+        </li>
+        <li class="notif">
+          <div class="nicon">🔄</div>
+          <div><div class="ntext">Your documents are under verification.</div><div class="ntime">24 Jul, 2:30 PM</div></div>
+        </li>
+        <li class="notif">
+          <div class="nicon">🟠</div>
+          <div><div class="ntext">Please resubmit the requested documents.</div><div class="ntime">25 Jul, 10:15 AM</div></div>
+        </li>
+        <li class="notif">
+          <div class="nicon">📅</div>
+          <div><div class="ntext">Physical verification scheduled for 28/07/2026.</div><div class="ntime">26 Jul, 4:45 PM</div></div>
+        </li>
+        <li class="notif current">
+          <div class="nicon">✅</div>
+          <div><div class="ntext">Your business partner verification has been completed.</div><div class="ntime">28 Jul, 1:20 PM</div></div>
+        </li>
+        <li class="notif pending">
+          <div class="nicon">📄</div>
+          <div><div class="ntext">Your application has been transferred to the Procurement Team.</div><div class="ntime">Pending</div></div>
+        </li>
+        <li class="notif pending">
+          <div class="nicon">🎉</div>
+          <div><div class="ntext">Welcome! Your account is now active.</div><div class="ntime">Pending</div></div>
+        </li>
+      </ul>
+    </div>
+    <div class="status-line">Current Status: <b>Business Partner Verified</b></div>
+    <div class="note">Faded items haven't happened yet — the feed fills in automatically as your application moves forward, so you never have to ask "what's my status."</div>
+  `,
+  // Step 3
+  () => `
+    <div class="status-line" style="margin-bottom:16px;">Status: <b>🟡 Commercial Offer Received</b></div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">01</span><h3>Material Details</h3></div>
+      <div class="kv-grid">
+        <div class="kv"><span>Material Type</span><b>Lithium-ion Battery</b></div>
+        <div class="kv"><span>Quantity</span><b>15,000 kg</b></div>
+        <div class="kv"><span>Pickup Location</span><b>Ghaziabad, Uttar Pradesh</b></div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">02</span><h3>MaxVolt Offer</h3></div>
+      <div class="kv-grid">
+        <div class="kv"><span>Offered Price</span><b>₹118 / kg</b></div>
+        <div class="kv"><span>Estimated Pickup</span><b>Within 5 Working Days</b></div>
+        <div class="kv"><span>Offer Valid Till</span><b>31 July 2026</b></div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">03</span><h3>Your Response</h3></div>
+      <div class="form-grid">
+        <div class="field"><label>Counter Offer (Optional)</label><input placeholder="₹ per kg"></div>
+      </div>
+      <div class="actions" style="margin-top:12px;">
+        <button class="btn primary">🟢 Accept Offer</button>
+        <button class="btn">🟡 Negotiate</button>
+        <button class="btn ghost">🔴 Reject Offer</button>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">04</span><h3>Negotiation Timeline</h3></div>
+      <table>
+        <thead><tr><th>Date</th><th>By</th><th>Offer</th></tr></thead>
+        <tbody>
+          <tr><td>24 Jul</td><td>MaxVolt</td><td class="strong">₹115/kg</td></tr>
+          <tr><td>25 Jul</td><td>Client</td><td class="strong">₹122/kg</td></tr>
+          <tr><td>26 Jul</td><td>MaxVolt</td><td class="strong">₹118/kg</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ul class="milestones" style="margin-top:6px;">
+      <li class="check"><span class="dot"></span> Offer Received</li>
+      <li class="pending"><span class="dot"></span> Waiting for Client Response</li>
+    </ul>
+
+    <div class="note">Only the final commercial offer and negotiation history are visible to you. Internal cost calculations, profitability analysis and approval workflows remain confidential.</div>
+  `,
+  // Step 4
+  () => `
+    <div class="status-line" style="margin-bottom:16px;">Status: <b>🟡 Collection in Progress</b></div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">01</span><h3>Order Summary</h3></div>
+      <div class="kv-grid">
+        <div class="kv"><span>Order ID</span><b>ORD-2026-0015</b></div>
+        <div class="kv"><span>Material</span><b>Lithium-ion Batteries</b></div>
+        <div class="kv"><span>Total Quantity</span><b>15,000 kg</b></div>
+        <div class="kv"><span>Pickup Locations</span><b>5</b></div>
+        <div class="kv"><span>Current Stage</span><span class="pill warn">Collection in Progress</span></div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">02</span><h3>Collection Progress</h3></div>
+      <table>
+        <thead><tr><th>Pickup Location</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Noida</td><td><span class="pill ok">✅ Collected</span></td></tr>
+          <tr><td>Gurugram</td><td><span class="pill warn">🟡 Scheduled</span></td></tr>
+          <tr><td>Faridabad</td><td><span class="pill mid">⏳ Pending</span></td></tr>
+          <tr><td>Jaipur</td><td><span class="pill mid">⏳ Pending</span></td></tr>
+          <tr><td>Lucknow</td><td><span class="pill mid">⏳ Pending</span></td></tr>
+        </tbody>
+      </table>
+      <p class="section-sub" style="margin:8px 0 0;">Single-pickup orders skip this table and show just "Collection Scheduled."</p>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">03</span><h3>Overall Progress</h3></div>
+      <ul class="track-list">
+        <li class="done"><span class="box">✅</span> Commercial Approved</li>
+        <li class="current"><span class="box">🟡</span> Collection in Progress <span style="color:var(--text-dim); margin-left:6px;">(1 of 5 completed)</span></li>
+        <li><span class="box">⬜</span> Material in Transit to ReEarth</li>
+        <li><span class="box">⬜</span> Material Received</li>
+        <li><span class="box">⬜</span> Recycling Started</li>
+        <li><span class="box">⬜</span> Recycling Completed</li>
+      </ul>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">04</span><h3>Documents</h3></div>
+      <table>
+        <thead><tr><th>Document</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Purchase Order</td><td><span class="pill ok">✅ Download</span></td></tr>
+          <tr><td>Collection Receipt</td><td><span class="pill mid">Available after collection</span></td></tr>
+          <tr><td>Material Receipt</td><td><span class="pill mid">Available after plant receipt</span></td></tr>
+          <tr><td>Recycling Certificate</td><td><span class="pill mid">Available after recycling</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">05</span><h3>Notifications</h3></div>
+      <ul class="notif-feed">
+        <li class="notif"><div class="nicon">✔</div><div><div class="ntext">Pickup scheduled successfully.</div></div></li>
+        <li class="notif"><div class="nicon">✔</div><div><div class="ntext">Material collected from Noida.</div></div></li>
+        <li class="notif current"><div class="nicon">⏳</div><div><div class="ntext">Next pickup scheduled for Gurugram.</div></div></li>
+        <li class="notif pending"><div class="nicon">📩</div><div><div class="ntext">You will be notified once all material reaches the plant.</div></div></li>
+      </ul>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">06</span><h3>Support</h3></div>
+      <div class="actions">
+        <button class="btn">📞 Contact Account Manager</button>
+        <button class="btn ghost">💬 Raise Support Ticket</button>
+      </div>
+    </div>
+
+    <div class="note">You track one Order ID from start to finish. However many pickups it takes, this screen stays this simple.</div>
+  `,
+  // Step 5
+  () => `
+    <ul class="milestones">
+      <li class="check"><span class="dot"></span> Received at plant</li>
+      <li class="check"><span class="dot"></span> Processing started</li>
+      <li class="check"><span class="dot"></span> EPR certificate generated</li>
+    </ul>
+    <div class="actions">
+      <button class="btn primary">Download EPR Certificate</button>
+    </div>
+    <div class="note">Sorting, dismantling and recovery percentages are internal production data — you receive the compliance outcome, not the process detail.</div>
+  `
+];
+
+// ---------------- INTERNAL VIEW CONTENT ----------------
+const internal = [
+  // Step 1
+  () => `
+    <table>
+      <thead><tr><th>App ID</th><th>Company</th><th>Cat.</th><th>Sub-type</th><th>Doc Status</th><th>Submitted</th></tr></thead>
+      <tbody>
+        <tr><td class="strong">APP-101</td><td>ABC Motors</td><td><span class="pill ok">CAT-1</span></td><td>OEM</td><td><span class="pill ok">Complete</span></td><td>24 Jul</td></tr>
+        <tr><td class="strong">APP-102</td><td>XYZ Pvt Ltd</td><td><span class="pill warn">CAT-2</span></td><td>Aggregator</td><td><span class="pill warn">Incomplete</span></td><td>24 Jul</td></tr>
+        <tr><td class="strong">APP-103</td><td>Nimbus Data Centre</td><td><span class="pill mid">CAT-3</span></td><td>Data Centre</td><td><span class="pill ok">Complete</span></td><td>25 Jul</td></tr>
+      </tbody>
+    </table>
+    <div class="note">Internal queue view — filterable by category (Producer / Collection Partner / Waste Generator) and document completeness before it reaches the Verification team.</div>
+  `,
+  // Step 2
+  () => `
+    <table>
+      <thead><tr><th>Company</th><th>Document Status</th><th>Inspection Status</th><th>Final Status</th></tr></thead>
+      <tbody>
+        <tr><td class="strong">ABC Ltd</td><td><span class="pill ok">Approved</span></td><td><span class="pill warn">Pending</span></td><td><span class="pill mid">In Progress</span></td></tr>
+        <tr><td class="strong">XYZ Pvt Ltd</td><td><span class="pill ok">Approved</span></td><td><span class="pill ok">Approved</span></td><td><span class="pill ok">Verified</span></td></tr>
+        <tr><td class="strong">PQR Industries</td><td><span class="pill bad">Rejected</span></td><td>–</td><td><span class="pill bad">Closed</span></td></tr>
+      </tbody>
+    </table>
+    <div class="section-block" style="margin-top:22px;">
+      <div class="section-head"><span class="si">⚙</span><h3>Notification Trigger Rules</h3></div>
+      <p class="section-sub">What fires automatically on the client's side when your team updates a status.</p>
+      <table class="rules-table">
+        <thead><tr><th>Stage / Status Change</th><th>Client Notification</th></tr></thead>
+        <tbody>
+          <tr><td>Application submitted</td><td>✅ Your application has been submitted.</td></tr>
+          <tr><td>Doc review started</td><td>🔄 Your documents are under verification.</td></tr>
+          <tr><td>Doc status = Need Clarification</td><td>🟠 Please resubmit the requested documents.</td></tr>
+          <tr><td>Inspection assigned + date set</td><td>📅 Physical verification scheduled for DD/MM/YYYY.</td></tr>
+          <tr><td>Inspection status = Approved</td><td>✅ Your business partner verification has been completed.</td></tr>
+          <tr><td>Handoff to Procurement</td><td>📄 Your application has been transferred to the Procurement Team.</td></tr>
+          <tr><td>Account activated</td><td>🎉 Welcome! Your account is now active.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">Includes reviewer remarks, inspection photos and GPS — none of which are shown to the client. Notification rules are configurable per status transition.</div>
+  `,
+  // Step 3
+  () => `
+    <div class="section-block">
+      <div class="section-head"><span class="si">01</span><h3>Request Summary</h3></div>
+      <div class="kv-grid">
+        <div class="kv"><span>Company</span><b>ABC Motors</b></div>
+        <div class="kv"><span>Material</span><b>Lithium-ion Battery · LFP</b></div>
+        <div class="kv"><span>Quantity</span><b>15,000 kg</b></div>
+        <div class="kv"><span>Location → Plant</span><b>Ghaziabad → Noida (32 km)</b></div>
+        <div class="kv"><span>Status</span><span class="pill warn">Under Review</span></div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">02</span><h3>Cost & Profitability</h3></div>
+      <div class="kpis">
+        <div class="kpi"><div class="v">₹21.7L</div><div class="l">Total Cost</div></div>
+        <div class="kpi"><div class="v">₹26.9L</div><div class="l">Est. Revenue</div></div>
+        <div class="kpi"><div class="v" style="color:var(--teal)">₹5.2L</div><div class="l">Margin</div></div>
+        <div class="kpi"><div class="v" style="color:var(--teal)">19.3%</div><div class="l">Margin %</div></div>
+      </div>
+      <div class="recommend">🟢 AI Recommendation: Proceed</div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">03</span><h3>Commercial Proposal & Negotiation</h3></div>
+      <div class="kv-grid">
+        <div class="kv"><span>Offer Price</span><b>₹118 / kg</b></div>
+        <div class="kv"><span>Pickup Timeline</span><b>Within 5 Days</b></div>
+      </div>
+      <table style="margin-top:8px;">
+        <thead><tr><th>Round</th><th>By</th><th>Price</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>MaxVolt</td><td class="strong">₹115/kg</td><td><span class="pill mid">Sent</span></td></tr>
+          <tr><td>2</td><td>Client</td><td class="strong">₹122/kg</td><td><span class="pill warn">Counter</span></td></tr>
+          <tr><td>3</td><td>MaxVolt</td><td class="strong">₹118/kg</td><td><span class="pill ok">Final</span></td></tr>
+        </tbody>
+      </table>
+      <div class="actions" style="margin-top:12px;">
+        <button class="btn">Generate Quotation</button>
+        <button class="btn primary">Send to Client</button>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">04</span><h3>Approval</h3></div>
+      <div class="approval-row">
+        <span>Procurement Manager sign-off</span>
+        <div class="actions"><button class="btn sm primary">Approve</button><button class="btn sm ghost">Reject</button></div>
+      </div>
+      <div class="note" style="margin-top:0;">Finance / Management approval is added automatically only when margin falls below threshold.</div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">05</span><h3>On Approval</h3></div>
+      <div class="doc-chip-row" style="margin-bottom:12px;">
+        <span class="doc-chip">📄 Purchase Order</span>
+        <span class="doc-chip">📄 Agreement</span>
+        <span class="doc-chip">📄 Pickup Order</span>
+      </div>
+      <div class="flow-mini">
+        <span class="node done">Commercial Approved</span><span class="arrow">→</span>
+        <span class="node done">Documents Generated</span><span class="arrow">→</span>
+        <span class="node">Operations Team</span>
+      </div>
+    </div>
+
+    <div class="note">Cost breakdown, recovery estimation and margin detail stay internal to Procurement / Finance — client only sees the final offer.</div>
+  `,
+  // Step 4
+  () => `
+    <div class="section-block">
+      <div class="section-head"><span class="si">01</span><h3>Order Summary</h3></div>
+      <div class="kv-grid">
+        <div class="kv"><span>Order ID</span><b>ORD-24001</b></div>
+        <div class="kv"><span>Client</span><b>ABC EV Pvt. Ltd.</b></div>
+        <div class="kv"><span>Material</span><b>Lithium-ion Batteries</b></div>
+        <div class="kv"><span>Quantity</span><b>15,000 kg</b></div>
+        <div class="kv"><span>Pickup Location</span><b>Noida</b></div>
+        <div class="kv"><span>Current Stage</span><span class="pill warn">Pickup Scheduled</span></div>
+        <div class="kv"><span>Assigned Executive</span><b>Rahul Sharma</b></div>
+        <div class="kv"><span>Priority</span><b>High</b></div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">02</span><h3>Operations Workflow</h3></div>
+      <table>
+        <thead><tr><th>Activity</th><th>Status</th><th>Assigned To</th></tr></thead>
+        <tbody>
+          <tr><td>Order Received</td><td><span class="pill ok">✅ Completed</span></td><td>System</td></tr>
+          <tr><td>Pickup Planning</td><td><span class="pill ok">✅ Completed</span></td><td>Operations</td></tr>
+          <tr><td>Vehicle Assigned</td><td><span class="pill warn">🟡 In Progress</span></td><td>Logistics</td></tr>
+          <tr><td>Driver Assigned</td><td><span class="pill warn">🟡 In Progress</span></td><td>Logistics</td></tr>
+          <tr><td>Vehicle Dispatched</td><td><span class="pill mid">⏳ Pending</span></td><td>Driver</td></tr>
+          <tr><td>Material Collected</td><td><span class="pill mid">⏳ Pending</span></td><td>Driver</td></tr>
+          <tr><td>Plant Gate Entry</td><td><span class="pill mid">⏳ Pending</span></td><td>Security</td></tr>
+          <tr><td>Weight Verification</td><td><span class="pill mid">⏳ Pending</span></td><td>Weighbridge</td></tr>
+          <tr><td>Warehouse Entry</td><td><span class="pill mid">⏳ Pending</span></td><td>Warehouse</td></tr>
+          <tr><td>Transfer to Plant Operations</td><td><span class="pill mid">⏳ Pending</span></td><td>Plant Team</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">03</span><h3>Logistics Details</h3></div>
+      <div class="form-grid">
+        <div class="field"><label>Vehicle No.</label><input placeholder="UP16 AB 1234"></div>
+        <div class="field"><label>Driver Name</label><input placeholder="Rahul Sharma"></div>
+        <div class="field"><label>Driver Contact</label><input placeholder="+91 XXXXX XXXXX"></div>
+        <div class="field"><label>GPS Tracking</label><input placeholder="Live link / map"></div>
+        <div class="field"><label>Estimated Arrival Time</label><input placeholder="28 Jul, 10:00 AM"></div>
+        <div class="field"><label>Delay Alerts</label><input placeholder="None"></div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">04</span><h3>Plant Receipt</h3></div>
+      <div class="form-grid">
+        <div class="field"><label>Gate Entry Time</label><input placeholder="—"></div>
+        <div class="field"><label>Gross Weight</label><input placeholder="—"></div>
+        <div class="field"><label>Tare Weight</label><input placeholder="—"></div>
+        <div class="field"><label>Net Weight</label><input placeholder="—"></div>
+        <div class="field"><label>Weight Difference</label><input placeholder="—"></div>
+        <div class="field"><label>Material Condition</label><input placeholder="—"></div>
+        <div class="field full"><label>Inspection Remarks</label><textarea rows="2" placeholder="—"></textarea></div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head"><span class="si">05</span><h3>Warehouse Details</h3></div>
+      <div class="form-grid">
+        <div class="field"><label>Inventory ID</label><input placeholder="—"></div>
+        <div class="field"><label>Warehouse Zone</label><input placeholder="—"></div>
+        <div class="field"><label>Rack Number</label><input placeholder="—"></div>
+        <div class="field"><label>QR Code</label><input placeholder="—"></div>
+        <div class="field"><label>Storage Status</label><input placeholder="—"></div>
+      </div>
+    </div>
+
+    <div class="note">Client sees "what is happening." Your team sees "who is doing it, when, and what's next" — full assignments, GPS, weight verification and warehouse tracking.</div>
+  `,
+  // Step 5
+  () => `
+    <table>
+      <thead><tr><th>Batch</th><th>Sorting</th><th>Discharge</th><th>Dismantling</th><th>Black Mass %</th><th>Metal %</th><th>QC</th></tr></thead>
+      <tbody>
+        <tr><td class="strong">BATCH-045</td><td><span class="pill ok">Done</span></td><td><span class="pill ok">Done</span></td><td><span class="pill warn">In Progress</span></td><td>–</td><td>–</td><td><span class="pill mid">Pending</span></td></tr>
+        <tr><td class="strong">BATCH-044</td><td><span class="pill ok">Done</span></td><td><span class="pill ok">Done</span></td><td><span class="pill ok">Done</span></td><td>42%</td><td>91%</td><td><span class="pill ok">Passed</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note">Batch-level yield and QC data feed the EPR audit trail — client only receives the final certificate.</div>
+  `
+];
+
+const views = { client, internal };
+
+// Delegated interactivity for injected form elements (category pick, priority chip)
+document.getElementById('panel-body').addEventListener('click', (e) => {
+  const cat = e.target.closest('.cat-card');
+  if (cat){
+    cat.parentElement.querySelectorAll('.cat-card').forEach(c => c.classList.remove('picked'));
+    cat.classList.add('picked');
+    return;
+  }
+  const chip = e.target.closest('.chip');
+  if (chip){
+    chip.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('picked'));
+    chip.classList.add('picked');
+  }
+});
+
+render();
+</script>
+</body>
+</html>
