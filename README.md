@@ -1,1 +1,2 @@
-file:///C:/Users/AyushiJha/Downloads/MaxVolt_ReEarth_Dashboard_Mockup%20(2).html
+
+https://agent-6a649b7e4958719c79ddc--cozy-axolotl-ff40b6.netlify.app/
